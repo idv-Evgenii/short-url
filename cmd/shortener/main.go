@@ -80,7 +80,7 @@ func main() {
 	storage := NewURLStorage()
 	r.POST("/", postHandler(storage, config.BaseURL))
 	r.GET("/:short", postHandler(storage, config.BaseURL))
-	fmt.Printf("Listening port%s", config.ServerAddress, "....")
+	fmt.Printf("Listening port%s", config.ServerAddress)
 	r.Run(config.ServerAddress)
 
 }

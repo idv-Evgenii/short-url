@@ -29,7 +29,8 @@ func (m *MockStorage) getURL(short string) (string, bool) {
 
 func TestPostHandler(t *testing.T) {
 	storage := NewMockStorage()
-	handler := postHandler(storage)
+	baseURL := "http://localhost:9090"
+	handler := postHandler(storage, baseURL)
 	r := gin.New()
 	r.POST("/", handler)
 
@@ -49,8 +50,8 @@ func TestPostHandler(t *testing.T) {
 	buf.ReadFrom(res.Body)
 	responseBody := buf.String()
 
-	if !strings.Contains(responseBody, "http://localhost:8080/") {
-		t.Errorf("expected response to contain 'http://localhost:8080/', got '%s'", responseBody)
+	if !strings.Contains(responseBody, baseURL+"/") {
+		t.Errorf("expected response to contain '%s/', got '%s'", baseURL, responseBody)
 	}
 
 	found := false
@@ -70,7 +71,8 @@ func TestPostHandler(t *testing.T) {
 func TestGetHandler(t *testing.T) {
 	storage := NewMockStorage()
 	storage.postURL("abc123", "https://example.com")
-	handler := postHandler(storage)
+	baseURL := "http://localhost:9090"
+	handler := postHandler(storage, baseURL)
 	r := gin.New()
 	r.GET("/:short", handler)
 	req := httptest.NewRequest(http.MethodGet, "/abc123", nil)
@@ -90,7 +92,8 @@ func TestGetHandler(t *testing.T) {
 }
 func TestGetHandler_NotFound(t *testing.T) {
 	storage := NewMockStorage()
-	handler := postHandler(storage)
+	baseURL := "http://localhost:9090"
+	handler := postHandler(storage, baseURL)
 
 	r := gin.New()
 	r.GET("/:short", handler)
