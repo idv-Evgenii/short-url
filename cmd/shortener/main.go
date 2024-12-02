@@ -10,8 +10,8 @@ import (
 )
 
 type url interface {
-	postUrl(short, original string)
-	getUrl(short string) (string, bool)
+	postURL(short, original string)
+	getURL(short string) (string, bool)
 }
 type URLStorage struct {
 	urlmap map[string]string
@@ -23,11 +23,11 @@ func NewUrlStorage() *URLStorage {
 	}
 }
 
-func (u *URLStorage) postUrl(short, original string) {
+func (u *URLStorage) postURL(short, original string) {
 	u.urlmap[short] = original
 }
 
-func (u *URLStorage) getUrl(short string) (string, bool) {
+func (u *URLStorage) getURL(short string) (string, bool) {
 	original, exists := u.urlmap[short]
 	return original, exists
 }
@@ -51,7 +51,7 @@ func postHandler(u url) http.HandlerFunc {
 				http.Error(w, "Empty body", http.StatusBadRequest)
 			}
 			var randomStr = getRandString(8)
-			u.postUrl(randomStr, string(urlName))
+			u.postURL(randomStr, string(urlName))
 			w.WriteHeader(http.StatusCreated)
 			w.Write([]byte(fmt.Sprintf("Your new url: %s\r\n", randomStr)))
 
@@ -59,14 +59,14 @@ func postHandler(u url) http.HandlerFunc {
 			// return
 		} else if r.Method == http.MethodGet {
 			path := r.URL.Path[1:]
-			originalUrl, exists := u.getUrl(path)
+			originalURL, exists := u.getURL(path)
 			if !exists {
 				http.Error(w, "Not found Url ", 400)
 			} else {
 				w.Header().Set("Content-Type", "text/plain")
-				w.Header().Set("Location", originalUrl)
+				w.Header().Set("Location", originalURL)
 				w.WriteHeader(http.StatusTemporaryRedirect)
-				w.Write([]byte(fmt.Sprintf("Original URL: %s\r\n", originalUrl)))
+				w.Write([]byte(fmt.Sprintf("Original URL: %s\r\n", originalURL)))
 			}
 
 		}
