@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
 
 type MockStorage struct {
@@ -28,12 +30,14 @@ func (m *MockStorage) getURL(short string) (string, bool) {
 func TestPostHandler(t *testing.T) {
 	storage := NewMockStorage()
 	handler := postHandler(storage)
+	r := gin.New()
+	r.POST("/", handler)
 
 	body := bytes.NewBufferString("https://example.com")
 	req := httptest.NewRequest(http.MethodPost, "/", body)
 	w := httptest.NewRecorder()
 
-	handler(w, req)
+	r.ServeHTTP(w, req)
 
 	res := w.Result()
 	defer res.Body.Close()
@@ -67,9 +71,11 @@ func TestGetHandler(t *testing.T) {
 	storage := NewMockStorage()
 	storage.postURL("abc123", "https://example.com")
 	handler := postHandler(storage)
+	r := gin.New()
+	r.GET("/:short", handler)
 	req := httptest.NewRequest(http.MethodGet, "/abc123", nil)
 	w := httptest.NewRecorder()
-	handler(w, req)
+	r.ServeHTTP(w, req)
 	res := w.Result()
 	defer res.Body.Close()
 
@@ -85,9 +91,13 @@ func TestGetHandler(t *testing.T) {
 func TestGetHandler_NotFound(t *testing.T) {
 	storage := NewMockStorage()
 	handler := postHandler(storage)
+
+	r := gin.New()
+	r.GET("/:short", handler)
+
 	req := httptest.NewRequest(http.MethodGet, "/nonexistent", nil)
 	w := httptest.NewRecorder()
-	handler(w, req)
+	r.ServeHTTP(w, req)
 
 	res := w.Result()
 	defer res.Body.Close()

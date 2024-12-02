@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"log"
 	"math/rand"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type url interface {
@@ -42,42 +42,43 @@ func getRandString(n int) string {
 	return string(result)
 }
 
-func postHandler(u url) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			w.Header().Set("Content-Type", "text/plain")
-			urlName, err := io.ReadAll(r.Body)
-			if err != nil || len(urlName) == 0 {
-				http.Error(w, "Empty body", http.StatusBadRequest)
-			}
-			var randomStr = getRandString(8)
-			u.postURL(randomStr, string(urlName))
-			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte(fmt.Sprintf("http://localhost:8080/%s", randomStr)))
+func postHandler(u url) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		switch c.Request.Method {
+		case http.MethodPost:
+			body, err := c.GetRawData()
 
-			// http.Error(w, "Invalid Method", http.StatusMethodNotAllowed)
-			// return
-		} else if r.Method == http.MethodGet {
-			path := r.URL.Path[1:]
-			originalURL, exists := u.getURL(path)
+			if err != nil || len(body) == 0 {
+				c.String(http.StatusBadRequest, "Invalid Body")
+				return
+			}
+			url := string(body)
+			randomStr := getRandString(8)
+			u.postURL(randomStr, url)
+			c.Header("Content-Type", "text/plain")
+			c.String(http.StatusCreated, "http://localhost:8080/%s", randomStr)
+
+		case http.MethodGet:
+			shortURL := c.Param("short")
+			original, exists := u.getURL(shortURL)
 			if !exists {
-				http.Error(w, "Not found Url ", http.StatusBadRequest)
-			} else {
-				w.Header().Set("Content-Type", "text/plain")
-				w.Header().Set("Location", originalURL)
-				w.WriteHeader(http.StatusTemporaryRedirect)
-				w.Write([]byte(originalURL))
+				c.String(http.StatusBadRequest, "Not found Url")
 			}
+			c.Header("Content-Type", "text/plain")
+			c.Redirect(http.StatusTemporaryRedirect, original)
 
+		default:
+			c.String(http.StatusMethodNotAllowed, "Invalid Method")
 		}
 
 	}
 }
-
 func main() {
+	r := gin.Default()
 	storage := NewURLStorage()
-	mux := http.NewServeMux()
-	mux.HandleFunc(`/`, postHandler(storage))
+	r.POST("/", postHandler(storage))
+	r.GET("/:short", postHandler(storage))
 	fmt.Println("Listening port 8080....")
-	log.Fatal(http.ListenAndServe(`:8080`, mux))
+	r.Run(":8080")
+
 }
