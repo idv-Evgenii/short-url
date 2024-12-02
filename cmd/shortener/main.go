@@ -17,7 +17,7 @@ type URLStorage struct {
 	urlmap map[string]string
 }
 
-func NewUrlStorage() *URLStorage {
+func NewURLStorage() *URLStorage {
 	return &URLStorage{
 		urlmap: make(map[string]string),
 	}
@@ -75,7 +75,7 @@ func postHandler(u url) http.HandlerFunc {
 }
 
 func main() {
-	storage := NewUrlStorage()
+	storage := NewURLStorage()
 	mux := http.NewServeMux()
 	mux.HandleFunc(`/`, postHandler(storage))
 	fmt.Println("Listening port 8080....")
