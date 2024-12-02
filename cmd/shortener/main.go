@@ -53,7 +53,7 @@ func postHandler(u url) http.HandlerFunc {
 			var randomStr = getRandString(8)
 			u.postURL(randomStr, string(urlName))
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte(fmt.Sprintf("Your new url: %s\r\n", randomStr)))
+			w.Write([]byte(randomStr))
 
 			// http.Error(w, "Invalid Method", http.StatusMethodNotAllowed)
 			// return
