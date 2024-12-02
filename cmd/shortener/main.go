@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/idv-Evgenii/short-url/cmd/shortener/config"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -42,7 +44,7 @@ func getRandString(n int) string {
 	return string(result)
 }
 
-func postHandler(u url) gin.HandlerFunc {
+func postHandler(u url, baseURL string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		switch c.Request.Method {
 		case http.MethodPost:
@@ -56,8 +58,7 @@ func postHandler(u url) gin.HandlerFunc {
 			randomStr := getRandString(8)
 			u.postURL(randomStr, url)
 			c.Header("Content-Type", "text/plain")
-			c.String(http.StatusCreated, "http://localhost:8080/%s", randomStr)
-
+			c.String(http.StatusCreated, "%s/%s", baseURL, randomStr)
 		case http.MethodGet:
 			shortURL := c.Param("short")
 			original, exists := u.getURL(shortURL)
@@ -75,10 +76,11 @@ func postHandler(u url) gin.HandlerFunc {
 }
 func main() {
 	r := gin.Default()
+	config := config.NewConfig()
 	storage := NewURLStorage()
-	r.POST("/", postHandler(storage))
-	r.GET("/:short", postHandler(storage))
-	fmt.Println("Listening port 8080....")
-	r.Run(":8080")
+	r.POST("/", postHandler(storage, config.BaseURL))
+	r.GET("/:short", postHandler(storage, config.BaseURL))
+	fmt.Printf("Listening port%s", config.ServerAddress, "....")
+	r.Run(config.ServerAddress)
 
 }
