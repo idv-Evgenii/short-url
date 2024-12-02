@@ -34,10 +34,10 @@ func (u *URLStorage) getURL(short string) (string, bool) {
 
 func getRandString(n int) string {
 	chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-	rand.Seed(time.Now().UnixNano())
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	result := make([]byte, n)
 	for i := range result {
-		result[i] = chars[rand.Intn(len(chars))]
+		result[i] = chars[rng.Intn(len(chars))]
 	}
 	return string(result)
 }
@@ -61,7 +61,7 @@ func postHandler(u url) http.HandlerFunc {
 			path := r.URL.Path[1:]
 			originalURL, exists := u.getURL(path)
 			if !exists {
-				http.Error(w, "Not found Url ", 400)
+				http.Error(w, "Not found Url ", http.StatusBadRequest)
 			} else {
 				w.Header().Set("Content-Type", "text/plain")
 				w.Header().Set("Location", originalURL)
