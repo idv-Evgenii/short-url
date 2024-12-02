@@ -66,7 +66,7 @@ func postHandler(u url) http.HandlerFunc {
 				w.Header().Set("Content-Type", "text/plain")
 				w.Header().Set("Location", originalURL)
 				w.WriteHeader(http.StatusTemporaryRedirect)
-				w.Write([]byte(fmt.Sprintf("Original URL: %s\r\n", originalURL)))
+				w.Write([]byte(originalURL))
 			}
 
 		}
