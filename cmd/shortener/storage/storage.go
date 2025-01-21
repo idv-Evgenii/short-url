@@ -9,7 +9,6 @@ import (
 	"sync"
 )
 
-// URLRecord represents a single URL record
 type URLRecord struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
@@ -23,7 +22,6 @@ type URLStorage struct {
 	nextID int // Следующий UUID
 }
 
-// NewURLStorage создает новое хранилище URL
 func NewURLStorage(filePath string) *URLStorage {
 	storage := &URLStorage{
 		urlmap: make(map[string]URLRecord),
@@ -34,30 +32,36 @@ func NewURLStorage(filePath string) *URLStorage {
 	return storage
 }
 
-// postURL добавляет URL в хранилище
-func (u *URLStorage) postURL(short, original string) string {
+func (u *URLStorage) PostURL(short, original string) string {
 	u.mu.Lock()
 	defer u.mu.Unlock()
+
+	// Используем поле nextID, чтобы сгенерировать новый UUID
 	uuid := fmt.Sprintf("%d", u.nextID)
+
+	// Сохраняем запись в хранилище
 	u.urlmap[short] = URLRecord{
 		UUID:        uuid,
 		ShortURL:    short,
 		OriginalURL: original,
 	}
-	u.nextID++     // Увеличиваем UUID для следующей записи
-	u.saveToFile() // Сохранение после добавления
+
+	// Увеличиваем nextID для следующего вызова
+	u.nextID++
+
+	// Сохраняем данные в файл
+	u.saveToFile()
+
 	return uuid
 }
 
-// getURL получает оригинальный URL по короткому
-func (u *URLStorage) getURL(short string) (string, bool) {
+func (u *URLStorage) GetURL(short string) (string, bool) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	record, exists := u.urlmap[short]
 	return record.OriginalURL, exists
 }
 
-// saveToFile сохраняет данные в файл
 func (u *URLStorage) saveToFile() {
 	if u.file == "" {
 		return // Если файл не задан, не сохраняем
@@ -84,7 +88,6 @@ func (u *URLStorage) saveToFile() {
 	}
 }
 
-// loadFromFile загружает данные из файла
 func (u *URLStorage) loadFromFile() {
 	if u.file == "" {
 		return // Если файл не задан, пропускаем загрузку

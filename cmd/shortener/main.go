@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/idv-Evgenii/short-url/cmd/shortener/config"
@@ -9,6 +11,22 @@ import (
 	"github.com/idv-Evgenii/short-url/cmd/shortener/storage"
 )
 
+func getFilePath() string {
+	defaultPath := "/tmp/short-url-db.json"
+	filePath := flag.String("f", "", "Path to the file for URL storage")
+	flag.Parse()
+
+	envPath := os.Getenv("FILE_STORAGE_PATH")
+	if envPath != "" {
+		return envPath
+	}
+
+	if *filePath != "" {
+		return *filePath
+	}
+
+	return defaultPath
+}
 func main() {
 	// Инициализация и настройки
 	r := gin.Default()

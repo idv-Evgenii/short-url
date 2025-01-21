@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -13,43 +12,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// URL интерфейс для хранения и получения URL
-type URL interface {
-	postURL(short, original string) string
-	getURL(short string) (string, bool)
-}
-
-// PostHandler обработчик POST и GET запросов
-func PostHandler(u URL, baseURL string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		switch c.Request.Method {
-		case http.MethodPost:
-			body, err := c.GetRawData()
-			if err != nil || len(body) == 0 {
-				c.String(http.StatusBadRequest, "Invalid Body")
-				return
-			}
-			url := string(body)
-			randomStr := getRandString(8)
-			_ = u.postURL(randomStr, url) // Теперь uuid используется в методе postURL
-			c.Header("Content-Type", "text/plain")
-			c.String(http.StatusCreated, "%s/%s", baseURL, randomStr)
-		case http.MethodGet:
-			shortURL := c.Param("short")
-			original, exists := u.getURL(shortURL)
-			if !exists {
-				c.String(http.StatusBadRequest, "Not found Url")
-				return
-			}
-			c.Header("Content-Type", "text/plain")
-			c.Redirect(http.StatusTemporaryRedirect, original)
-		default:
-			c.String(http.StatusMethodNotAllowed, "Invalid Method")
-		}
-	}
-}
-
-// LoggerMiddleware логгирование запросов
 func LoggerMiddleware() gin.HandlerFunc {
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{})
@@ -72,7 +34,6 @@ func LoggerMiddleware() gin.HandlerFunc {
 	}
 }
 
-// DecompressGzip для декомпрессии входящих запросов
 func DecompressGzip() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.GetHeader("Content-Encoding") == "gzip" {
@@ -96,7 +57,6 @@ func DecompressGzip() gin.HandlerFunc {
 	}
 }
 
-// CompressGzip для сжатия выходящих ответов
 func CompressGzip() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		writer := &responseCapture{
@@ -112,7 +72,6 @@ func CompressGzip() gin.HandlerFunc {
 			return
 		}
 
-		// Сжимаем данные
 		var compressedBuf bytes.Buffer
 		gz := gzip.NewWriter(&compressedBuf)
 		_, err := gz.Write(writer.buf.Bytes())
@@ -139,14 +98,4 @@ func (r *responseCapture) Write(data []byte) (int, error) {
 
 func supportsGzip(c *gin.Context) bool {
 	return c.GetHeader("Accept-Encoding") != "" && c.GetHeader("Accept-Encoding") != "gzip"
-}
-
-func getRandString(n int) string {
-	chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	result := make([]byte, n)
-	for i := range result {
-		result[i] = chars[rng.Intn(len(chars))]
-	}
-	return string(result)
 }
