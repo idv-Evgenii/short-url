@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/idv-Evgenii/short-url/cmd/shortener/config"
 	"github.com/sirupsen/logrus"
+
+	"github.com/idv-Evgenii/short-url/cmd/shortener/config"
 )
 
 type url interface {
@@ -71,9 +72,9 @@ func postHandler(u url, baseURL string) gin.HandlerFunc {
 		default:
 			c.String(http.StatusMethodNotAllowed, "Invalid Method")
 		}
-
 	}
 }
+
 func LoggerMiddleware() gin.HandlerFunc {
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{})
@@ -81,11 +82,7 @@ func LoggerMiddleware() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		start := time.Now()
-
-		// Выполняем запрос
 		c.Next()
-
-		// После выполнения запроса
 		duration := time.Since(start)
 		statusCode := c.Writer.Status()
 		contentLength := c.Writer.Size()
@@ -99,6 +96,31 @@ func LoggerMiddleware() gin.HandlerFunc {
 		}).Info("Handled request")
 	}
 }
+
+type RequestBody struct {
+	URL string `json:"url"`
+}
+
+type ResponseBody struct {
+	Result string `json:"result"`
+}
+
+func apiShortenHandler(u url, baseURL string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var reqBody RequestBody
+		if err := c.ShouldBindJSON(&reqBody); err != nil || reqBody.URL == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+			return
+		}
+		randomStr := getRandString(8)
+		u.postURL(randomStr, reqBody.URL)
+		resBody := ResponseBody{
+			Result: fmt.Sprintf("%s/%s", baseURL, randomStr),
+		}
+		c.JSON(http.StatusOK, resBody)
+	}
+}
+
 func main() {
 	r := gin.Default()
 	r.Use(LoggerMiddleware())
@@ -106,7 +128,7 @@ func main() {
 	storage := NewURLStorage()
 	r.POST("/", postHandler(storage, config.BaseURL))
 	r.GET("/:short", postHandler(storage, config.BaseURL))
+	r.POST("/api/shorten", apiShortenHandler(storage, config.BaseURL))
 	fmt.Printf("Listening port%s", config.ServerAddress)
 	r.Run(config.ServerAddress)
-
 }
