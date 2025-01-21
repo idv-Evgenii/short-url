@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/idv-Evgenii/short-url/cmd/shortener/config"
-
 	"github.com/gin-gonic/gin"
+	"github.com/idv-Evgenii/short-url/cmd/shortener/config"
+	"github.com/sirupsen/logrus"
 )
 
 type url interface {
@@ -74,8 +74,34 @@ func postHandler(u url, baseURL string) gin.HandlerFunc {
 
 	}
 }
+func LoggerMiddleware() gin.HandlerFunc {
+	logger := logrus.New()
+	logger.SetFormatter(&logrus.JSONFormatter{})
+	logger.SetLevel(logrus.InfoLevel)
+
+	return func(c *gin.Context) {
+		start := time.Now()
+
+		// Выполняем запрос
+		c.Next()
+
+		// После выполнения запроса
+		duration := time.Since(start)
+		statusCode := c.Writer.Status()
+		contentLength := c.Writer.Size()
+
+		logger.WithFields(logrus.Fields{
+			"method":        c.Request.Method,
+			"uri":           c.Request.RequestURI,
+			"status":        statusCode,
+			"contentLength": contentLength,
+			"duration":      duration.String(),
+		}).Info("Handled request")
+	}
+}
 func main() {
 	r := gin.Default()
+	r.Use(LoggerMiddleware())
 	config := config.NewConfig()
 	storage := NewURLStorage()
 	r.POST("/", postHandler(storage, config.BaseURL))
