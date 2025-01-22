@@ -7,7 +7,9 @@ import (
 	"github.com/idv-Evgenii/short-url/cmd/shortener/storage"
 )
 
-func PostHandler(u *storage.URLStorage, baseURL string) gin.HandlerFunc {
+const randomStringLength = 8
+
+func PostHandler(u storage.Storage, baseURL string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		switch c.Request.Method {
 		case http.MethodPost:
@@ -17,8 +19,8 @@ func PostHandler(u *storage.URLStorage, baseURL string) gin.HandlerFunc {
 				return
 			}
 			url := string(body)
-			randomStr := getRandString(8)
-			_ = u.PostURL(randomStr, url) // Теперь uuid используется в методе postURL, но мы не выводим его напрямую
+			randomStr := getRandString(randomStringLength)
+			_ = u.PostURL(randomStr, url)
 			c.Header("Content-Type", "text/plain")
 			c.String(http.StatusCreated, "%s/%s", baseURL, randomStr)
 		case http.MethodGet:
@@ -33,5 +35,20 @@ func PostHandler(u *storage.URLStorage, baseURL string) gin.HandlerFunc {
 		default:
 			c.String(http.StatusMethodNotAllowed, "Invalid Method")
 		}
+	}
+}
+
+func APIShortenHandler(u storage.Storage, baseURL string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			URL string `json:"url"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
+		randomStr := getRandString(randomStringLength)
+		_ = u.PostURL(randomStr, req.URL)
+		c.JSON(http.StatusOK, gin.H{"result": baseURL + "/" + randomStr})
 	}
 }

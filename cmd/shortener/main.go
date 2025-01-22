@@ -20,5 +20,7 @@ func main() {
 	r.POST("/", handler.PostHandler(storage, config.BaseURL))
 	r.GET("/:short", handler.PostHandler(storage, config.BaseURL))
 	fmt.Printf("Listening on port %s\n", config.ServerAddress)
-	r.Run(config.ServerAddress)
+	if err := r.Run(config.ServerAddress); err != nil {
+		fmt.Printf("Failed to run server: %v\n", err)
+	}
 }

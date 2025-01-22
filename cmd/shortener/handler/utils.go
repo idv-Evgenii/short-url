@@ -1,16 +1,14 @@
 package handler
 
 import (
-	"math/rand"
-	"time"
+	"crypto/rand"
+	"encoding/hex"
 )
 
 func getRandString(n int) string {
-	chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	result := make([]byte, n)
-	for i := range result {
-		result[i] = chars[rng.Intn(len(chars))]
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		panic(err) // Выберите, как обработать ошибку.
 	}
-	return string(result)
+	return hex.EncodeToString(b)[:n]
 }

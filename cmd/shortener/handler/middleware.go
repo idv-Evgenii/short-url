@@ -67,9 +67,12 @@ func CompressGzip() gin.HandlerFunc {
 
 		c.Next()
 
-		if !supportsGzip(c) || (c.Writer.Header().Get("Content-Type") != "application/json" && c.Writer.Header().Get("Content-Type") != "text/html") {
-			writer.ResponseWriter.Write(writer.buf.Bytes())
-			return
+		if !supportsGzip(c) || (c.Writer.Header().Get("Content-Type") != "application/json" &&
+			c.Writer.Header().Get("Content-Type") != "text/html") {
+			if _, err := writer.ResponseWriter.Write(writer.buf.Bytes()); err != nil {
+				c.String(http.StatusInternalServerError, "Failed to write response")
+				return
+			}
 		}
 
 		var compressedBuf bytes.Buffer
@@ -83,7 +86,10 @@ func CompressGzip() gin.HandlerFunc {
 		c.Writer.Header().Set("Content-Encoding", "gzip")
 		c.Writer.Header().Set("Content-Length", fmt.Sprint(compressedBuf.Len()))
 		c.Writer.WriteHeader(c.Writer.Status())
-		c.Writer.Write(compressedBuf.Bytes())
+		if _, err := c.Writer.Write(compressedBuf.Bytes()); err != nil {
+			c.String(http.StatusInternalServerError, "Failed to write compressed response")
+			return
+		}
 	}
 }
 

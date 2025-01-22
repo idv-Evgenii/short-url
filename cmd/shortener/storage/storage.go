@@ -22,6 +22,10 @@ type URLStorage struct {
 	mu     sync.Mutex
 	nextID int
 }
+type Storage interface {
+	PostURL(short, original string) string
+	GetURL(short string) (string, bool)
+}
 
 func NewURLStorage(filePath string) *URLStorage {
 	storage := &URLStorage{
@@ -54,12 +58,14 @@ func (u *URLStorage) GetURL(short string) (string, bool) {
 	return record.OriginalURL, exists
 }
 
+const filePermissions = 0644
+
 func (u *URLStorage) saveToFile() {
 	if u.file == "" {
 		return
 	}
 
-	file, err := os.OpenFile(u.file, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(u.file, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, filePermissions)
 	if err != nil {
 		log.Printf("Failed to open file for saving: %v\n", err)
 		return
