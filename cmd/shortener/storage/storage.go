@@ -9,12 +9,14 @@ import (
 	"sync"
 )
 
+// URLRecord represents a single URL record
 type URLRecord struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
+// URLStorage represents the URL storage
 type URLStorage struct {
 	urlmap map[string]URLRecord
 	file   string
@@ -22,6 +24,7 @@ type URLStorage struct {
 	nextID int // Следующий UUID
 }
 
+// NewURLStorage creates a new URL storage instance
 func NewURLStorage(filePath string) *URLStorage {
 	storage := &URLStorage{
 		urlmap: make(map[string]URLRecord),
@@ -32,29 +35,22 @@ func NewURLStorage(filePath string) *URLStorage {
 	return storage
 }
 
+// postURL adds a new short URL and original URL to the storage
 func (u *URLStorage) PostURL(short, original string) string {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-
-	// Используем поле nextID, чтобы сгенерировать новый UUID
 	uuid := fmt.Sprintf("%d", u.nextID)
-
-	// Сохраняем запись в хранилище
 	u.urlmap[short] = URLRecord{
 		UUID:        uuid,
 		ShortURL:    short,
 		OriginalURL: original,
 	}
-
-	// Увеличиваем nextID для следующего вызова
-	u.nextID++
-
-	// Сохраняем данные в файл
-	u.saveToFile()
-
+	u.nextID++     // Увеличиваем UUID для следующей записи
+	u.saveToFile() // Сохранение после добавления
 	return uuid
 }
 
+// getURL retrieves the original URL based on the short URL
 func (u *URLStorage) GetURL(short string) (string, bool) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
@@ -62,10 +58,12 @@ func (u *URLStorage) GetURL(short string) (string, bool) {
 	return record.OriginalURL, exists
 }
 
+// saveToFile saves the URL records to a file
 func (u *URLStorage) saveToFile() {
 	if u.file == "" {
 		return // Если файл не задан, не сохраняем
 	}
+
 	file, err := os.OpenFile(u.file, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Printf("Failed to open file for saving: %v\n", err)
@@ -73,21 +71,22 @@ func (u *URLStorage) saveToFile() {
 	}
 	defer file.Close()
 
-	encoder := json.NewEncoder(file)
 	for _, record := range u.urlmap {
-		if err := encoder.Encode(record); err != nil {
-			log.Printf("Failed to write to file: %v\n", err)
+		data, err := json.Marshal(record)
+		if err != nil {
+			log.Printf("Failed to marshal record: %v\n", err)
+			continue
+		}
+		// Записываем каждую строку в файл
+		_, err = file.Write(append(data, '\n')) // Добавляем перенос строки
+		if err != nil {
+			log.Printf("Failed to write record to file: %v\n", err)
 			return
 		}
 	}
-
-	// Сохраняем следующий UUID
-	state := map[string]int{"nextID": u.nextID}
-	if err := encoder.Encode(state); err != nil {
-		log.Printf("Failed to save state: %v\n", err)
-	}
 }
 
+// loadFromFile loads URL records from a file
 func (u *URLStorage) loadFromFile() {
 	if u.file == "" {
 		return // Если файл не задан, пропускаем загрузку
@@ -101,7 +100,9 @@ func (u *URLStorage) loadFromFile() {
 	}
 	defer file.Close()
 
+	u.urlmap = make(map[string]URLRecord) // Сбрасываем текущие данные
 	decoder := json.NewDecoder(file)
+
 	for {
 		var record URLRecord
 		if err := decoder.Decode(&record); err != nil {
@@ -112,13 +113,5 @@ func (u *URLStorage) loadFromFile() {
 			return
 		}
 		u.urlmap[record.ShortURL] = record
-	}
-
-	// Восстанавливаем следующий UUID
-	var state map[string]int
-	if err := decoder.Decode(&state); err == nil {
-		u.nextID = state["nextID"]
-	} else {
-		log.Printf("Failed to restore nextID: %v\n", err)
 	}
 }
