@@ -2,6 +2,7 @@ package storage
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -9,33 +10,29 @@ import (
 	"sync"
 )
 
-// URLRecord represents a single URL record
 type URLRecord struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
-// URLStorage represents the URL storage
 type URLStorage struct {
 	urlmap map[string]URLRecord
 	file   string
 	mu     sync.Mutex
-	nextID int // Следующий UUID
+	nextID int
 }
 
-// NewURLStorage creates a new URL storage instance
 func NewURLStorage(filePath string) *URLStorage {
 	storage := &URLStorage{
 		urlmap: make(map[string]URLRecord),
 		file:   filePath,
 		nextID: 1,
 	}
-	storage.loadFromFile() // Восстановление данных при старте
+	storage.loadFromFile()
 	return storage
 }
 
-// postURL adds a new short URL and original URL to the storage
 func (u *URLStorage) PostURL(short, original string) string {
 	u.mu.Lock()
 	defer u.mu.Unlock()
@@ -45,12 +42,11 @@ func (u *URLStorage) PostURL(short, original string) string {
 		ShortURL:    short,
 		OriginalURL: original,
 	}
-	u.nextID++     // Увеличиваем UUID для следующей записи
-	u.saveToFile() // Сохранение после добавления
+	u.nextID++
+	u.saveToFile()
 	return uuid
 }
 
-// getURL retrieves the original URL based on the short URL
 func (u *URLStorage) GetURL(short string) (string, bool) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
@@ -58,10 +54,9 @@ func (u *URLStorage) GetURL(short string) (string, bool) {
 	return record.OriginalURL, exists
 }
 
-// saveToFile saves the URL records to a file
 func (u *URLStorage) saveToFile() {
 	if u.file == "" {
-		return // Если файл не задан, не сохраняем
+		return
 	}
 
 	file, err := os.OpenFile(u.file, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
@@ -77,8 +72,7 @@ func (u *URLStorage) saveToFile() {
 			log.Printf("Failed to marshal record: %v\n", err)
 			continue
 		}
-		// Записываем каждую строку в файл
-		_, err = file.Write(append(data, '\n')) // Добавляем перенос строки
+		_, err = file.Write(append(data, '\n'))
 		if err != nil {
 			log.Printf("Failed to write record to file: %v\n", err)
 			return
@@ -86,10 +80,9 @@ func (u *URLStorage) saveToFile() {
 	}
 }
 
-// loadFromFile loads URL records from a file
 func (u *URLStorage) loadFromFile() {
 	if u.file == "" {
-		return // Если файл не задан, пропускаем загрузку
+		return
 	}
 	file, err := os.Open(u.file)
 	if err != nil {
@@ -100,7 +93,7 @@ func (u *URLStorage) loadFromFile() {
 	}
 	defer file.Close()
 
-	u.urlmap = make(map[string]URLRecord) // Сбрасываем текущие данные
+	u.urlmap = make(map[string]URLRecord)
 	decoder := json.NewDecoder(file)
 
 	for {
@@ -114,4 +107,20 @@ func (u *URLStorage) loadFromFile() {
 		}
 		u.urlmap[record.ShortURL] = record
 	}
+}
+func GetFilePath() string {
+	defaultPath := "/tmp/short-url-db.json"
+	filePath := flag.String("f", "", "Path to the file for URL storage")
+	flag.Parse()
+
+	envPath := os.Getenv("FILE_STORAGE_PATH")
+	if envPath != "" {
+		return envPath
+	}
+
+	if *filePath != "" {
+		return *filePath
+	}
+
+	return defaultPath
 }
